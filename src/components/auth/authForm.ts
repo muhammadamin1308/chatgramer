@@ -1,13 +1,12 @@
-import { loginUser } from "../../utils/socket";
-import socket from "../../utils/socket";
-import { waitForWebSocketReady } from "../../utils/socket";
+import { socket } from "../../utils/socket";
+// import { handleMessages } from "../../utils/socket";
 
 export function authForm() {
     const app = document.querySelector<HTMLDivElement>("#app");
     if (!app) throw new Error("App element not found");
     app.innerHTML = "";
     const form = document.createElement("form");
-    form.className = "login-form";
+    form.className = "auth-form";
     form.innerHTML = `
         <h2>Login</h2>
         <div class="form-group">
@@ -18,23 +17,66 @@ export function authForm() {
             <label for="password">Password</label>
             <input type="password" id="password" name="password" required>
         </div>
-        <button id='submit' type="submit">Login</button>
+        <button type="submit">Login</button>
     `;
+    app.appendChild(form);
 
-    form.addEventListener("submit", (event) => {
-        event.preventDefault();
+    const authForm = document.querySelector<HTMLFormElement>(".auth-form");
+    if (!authForm) throw new Error("Auth form not found");
+    authForm.addEventListener("submit", (e) => {
+
+        e.preventDefault();
         const username = (document.getElementById("username") as HTMLInputElement).value;
         const password = (document.getElementById("password") as HTMLInputElement).value;
-        // const storedUser = sessionStorage.getItem("user");
-        // const userId = storedUser ? JSON.parse(storedUser).id : generateID();
+
+        const loginData = {
+            id: null,
+            type: 'USER_LOGIN',
+            payload: {
+                user: {
+                    login: username,
+                    password: password,
+                }
+            }
+        }
 
         if (username && password) {
-            waitForWebSocketReady(socket).then(() => {
-            loginUser(username, password);
-            })
-        } else {
-            alert("Please fill in both username and password");
+            if (socket) {
+                socket.send(JSON.stringify(loginData));
+                sessionStorage.setItem("password", JSON.stringify(password), );
+            } else {
+                console.error("Socket is null. Unable to send login data.");
+            }
         }
+        const root = document.querySelector<HTMLDivElement>("#app") as HTMLDivElement;
+        const handleLoginResponse = (response: any) => {
+            if (response.type === "USER_LOGIN" && response.payload?.user?.login) {
+                
+                const user = response.payload.user.login;
+                sessionStorage.setItem("user", JSON.stringify(user), );
+                window.location.hash = "#/main";
+                root.innerHTML = "";
+            } else if (response.type === "ERROR") {
+                alert("Login failed. Please check your username and password.");
+            }
+        } 
+        if (socket) {
+            socket.addEventListener("message", (event) => {
+                const response = JSON.parse(event.data);
+                handleLoginResponse(response);
+            });
+        } else {
+            console.error("Socket is null. Unable to add event listener.");
+        }
+
+        // handleMessages((message: string) => {
+        //     const response = JSON.parse(message);
+        //     handleLoginResponse(response);
+        // });
+ 
     });
-    app.appendChild(form);
 }
+
+
+
+

@@ -1,9 +1,91 @@
-// import { sendMessage } from "../../utils/socket";
-import socket from "../../utils/socket";
-import { MessageEvent } from "../../interface/interfaces";
-import { getAllUsers } from "../../utils/socket";
-
+import { socket } from "../../utils/socket";
+import { sendMessage } from "../../utils/socket";
 const main = document.createElement("main");
+
+export function appHeader() {
+    // root element
+    const app = document.querySelector<HTMLDivElement>("#app");
+    if (!app) throw new Error("App element not found");
+
+    // app content
+    const header = document.createElement("header");
+    header.className = "header";
+    header.id = "app-header";
+    app.appendChild(header);
+
+    // logo
+    const logoCont = document.createElement("div") as HTMLDivElement;
+    logoCont.className = "logo-cont";
+    header.appendChild(logoCont);
+
+    const logo = document.createElement("img") as HTMLImageElement;
+    logo.className = "logo";
+    logo.id = "logo";
+    logo.src = "../assets/logos.png";
+    logoCont.appendChild(logo);
+
+    const logoText = document.createElement("p") as HTMLParagraphElement;
+    logoText.className = "logo-text";
+    logoText.innerText = "Chatgramer";
+    logoCont.appendChild(logoText);
+
+
+    // user name
+    const User = sessionStorage.getItem("user");
+
+    const userName = document.createElement("div") as HTMLDivElement;
+    userName.className = "user-name";
+    userName.id = "user-name";
+    userName.innerText = `Welcome ${User?.slice(1, -1)}` || "Who are you?";
+    header.appendChild(userName);
+
+
+    const rightSideOfNav = document.createElement("div") as HTMLDivElement;
+    rightSideOfNav.className = "right-side-nav";
+    header.appendChild(rightSideOfNav);
+
+    const about = document.createElement("div") as HTMLDivElement;
+    about.className = "about";
+    about.id = "about";
+    about.innerText = "About";
+    rightSideOfNav.appendChild(about);
+
+    const aboutHandle = document.querySelector("#about") as HTMLDivElement;
+    aboutHandle.addEventListener("click", () => {
+        window.location.hash = "#/about";
+    })
+
+    // logout 
+    const logOut = document.createElement("button") as HTMLButtonElement;
+    logOut.className = "log-out";
+    logOut.id = "log-out";
+    logOut.innerText = "Log Out";
+    rightSideOfNav.appendChild(logOut);
+
+    const logOutHandle = document.querySelector("#log-out") as HTMLButtonElement;
+    logOutHandle.addEventListener("click", () => {
+        sessionStorage.removeItem("user");
+        sessionStorage.removeItem("password");
+        socket?.send(JSON.stringify(logoutData));
+        window.location.hash = "#/auth";
+    })
+    const UserPassword = sessionStorage.getItem("password");
+    const logoutData = {
+        id: null,
+        type: 'USER_LOGOUT',
+        payload: {
+            user: {
+                login: User?.slice(1, -1),
+                password: UserPassword?.slice(1, -1),
+            }
+        }
+    }
+}
+
+
+
+
+
 
 export function appBody() {
 
@@ -12,7 +94,7 @@ export function appBody() {
     if (!app) throw new Error("App element not found");
 
     // app content
-    main.className = "";
+    main.innerHTML = "";
     main.id = "app-content";
     app.appendChild(main);
 
@@ -22,7 +104,7 @@ export function appBody() {
 
 
 function userSidebar() {
-    getAllUsers()
+
     const usersListCont = document.createElement("div") as HTMLDivElement;
     usersListCont.className = "users-list-cont";
     usersListCont.id = "users-list-cont";
@@ -38,7 +120,7 @@ function userSidebar() {
         usersListCont.appendChild(searchBar);
     }
 
-    function usersList(users: { login: string }[]): void {
+    function usersList(users: { login: string; isLogined: boolean }[]): void {
 
         let usersList = document.querySelector(".users-list") as HTMLDivElement;
         if (!usersList) {
@@ -52,6 +134,7 @@ function userSidebar() {
         usersList.innerHTML = "";
 
         users.forEach((user) => {
+
             const userDiv = document.createElement("div");
             userDiv.className = "user";
             usersList.appendChild(userDiv);
@@ -72,27 +155,88 @@ function userSidebar() {
 
             const userStatus = document.createElement("p") as HTMLParagraphElement;
             userStatus.className = "user-status";
-            userStatus.id = user.login + "-status";
-            userStatus.innerText = "Online";
+            if(user.isLogined){
+                userStatus.id = user.login + "-status";
+                userStatus.innerText = "Online";
+            } else{
+                userStatus.id = user.login + "-status";
+                userStatus.innerText = "Offline";
+            }
+
+
+
             nameDesc.appendChild(userStatus);
+
+            userDiv.addEventListener("click", () => {
+                const mainChat = document.querySelector("#main-chat") as HTMLDivElement;
+                mainChat.innerHTML = "";
+
+                const userName = user.login;
+                const userStatus = document.querySelector("#user-status") as HTMLParagraphElement;
+                const chatHeader = document.createElement("div") as HTMLDivElement;
+                chatHeader.className = "chat-header";
+                chatHeader.id = "chat-header";
+                mainChat.appendChild(chatHeader);
+
+                chatHeader.innerHTML = `
+                <div class="user" id="user2">
+                    <div class="user-img" id="user-img2">${userImg.innerText = user.login.slice(0, 2).toUpperCase()}</div>
+                    <div>
+                        <p class="user-name">${userName}</p>
+                    </div>
+                </div>`
+
+                const form = document.createElement('form');
+                form.className = 'chat-form';
+
+                const inputField = document.createElement('input');
+                inputField.type = 'text';
+                inputField.placeholder = 'Write a message...';
+                inputField.className = 'chat-input';
+                form.appendChild(inputField);
+
+                const submitButton = document.createElement('button');
+                submitButton.type = 'submit';
+                submitButton.className = 'chat-submit';
+                submitButton.innerText = 'Send';
+                form.appendChild(submitButton);
+
+                mainChat.appendChild(form);
+            })
         });
     }
 
-    socket.addEventListener("message", (event) => {
-        const data = JSON.parse(event.data);
-
-        if (data.type === "USER_ACTIVE") {
-            const users = data.payload.users;
-            console.log(data)
-            console.log("Active users:", users);
-            usersList(users);
-        } else if (data.type === "USER_EXTERNAL_LOGIN") {
-            const user = data.payload.user.login;
-            console.log("Other user logged in:", user);
-        }
+    sendMessage({
+        id: null,
+        type: "USER_ACTIVE",
+        payload: null,
+    });
+    sendMessage({
+        id: null,
+        type: "USER_INACTIVE",
+        payload: null,
     });
 
-    searchBar();    
+    if (socket) {
+        socket.addEventListener("message", (event) => {
+            const data = JSON.parse(event.data);
+
+            if (data.type === "USER_ACTIVE") {
+                const users = data.payload.users;
+                usersList(users);
+            } else if (data.type === "USER_INACTIVE") {
+                const users = data.payload.users;
+                usersList(users);
+
+            } else if (data.type === "USER_EXTERNAL_LOGIN") {
+                const user = data.payload.user.login;
+                console.log("Other user logged in:", user);
+            }
+        });
+    } else {
+        console.error("Socket is null. Unable to add event listener.");
+    }
+    searchBar();
 }
 
 
@@ -102,73 +246,53 @@ function mainChat() {
     mainChat.id = "main-chat";
     main.appendChild(mainChat);
 
-    function chatHeader() {
-        const chatHeader = document.createElement("div") as HTMLDivElement;
-        chatHeader.className = "chat-header";
-        chatHeader.id = "chat-header";
-        mainChat.appendChild(chatHeader);
+    const emptyChat = document.createElement("div") as HTMLDivElement;
+    emptyChat.className = "empty-chat";
+    emptyChat.innerHTML = `<p>Select a user to start chatting</p>`;
+    document.querySelector("#main-chat")?.appendChild(emptyChat);
 
-        chatHeader.innerHTML = `
-        <div class="user" id="user2">
-            <div class="user-img" id="user-img2"></div>
-            <div>
-                <p class="user-name">User 2</p>
-                <p class="user-status">Online</p>
-            </div>
-        </div>`
+    const chatSubmit = document.querySelector(".chat-submit") as HTMLButtonElement;
+    if (chatSubmit) {
+        chatSubmit.addEventListener("click", (e) => {
+            e.preventDefault();
+            const inputField = document.querySelector(".chat-input") as HTMLInputElement;
+            const message = inputField.value;
+            const user2 = document.querySelector("#user2")?.id;
+            const chatMessage = {
+                id: null,
+                type: "MSG_SEND",
+                payload: {
+                  message: {
+                    to: user2,
+                    text: message,
+                  }
+                }
+              }
+            socket?.send(JSON.stringify(chatMessage));
+            inputField.value = "";
+        })
     }
 
-    chatHeader();
-
-    const form = document.createElement('form');
-    form.className = 'chat-form';
-
-    const inputField = document.createElement('input');
-    inputField.type = 'text';
-    inputField.placeholder = 'Write a message...';
-    inputField.className = 'chat-input';
-    form.appendChild(inputField);
-
-    const submitButton = document.createElement('button');
-    submitButton.type = 'submit';
-    submitButton.className = 'chat-submit';
-    submitButton.innerText = 'Send';
-    form.appendChild(submitButton);
-
-
-    async function sendMessage(event: MessageEvent): Promise<void> {
-        event.preventDefault();
-        const input = document.querySelector(".chat-input") as HTMLInputElement
-        if (input.value) {
-            socket.send(input.value)
-            input.value = ""
-        }
-        input.focus()
-    }
+}
 
 
 
 
 
-    const messages = document.getElementById('main-chat') as HTMLElement;
+export function appFooter() {
+    // root element
+    const app = document.querySelector<HTMLDivElement>("#app");
+    if (!app) throw new Error("App element not found");
 
+    // app content
+    const footer = document.createElement("footer");
+    footer.className = "footer";
+    footer.id = "app-footer";
+    app.appendChild(footer);
 
-    socket.onmessage = (event) => {
-        const message = document.createElement('div');
-        message.textContent = event.data;
-        messages.appendChild(message);
-    };
-
-
-
-    form.addEventListener('submit', async (event) => {
-        event.preventDefault();
-        const message = inputField.value;
-        if (message) {
-            await sendMessage(event);
-            console.log('Message sent:', message);
-        }
-    });
-
-    mainChat.appendChild(form);
+    footer.innerHTML = `
+            <a href='https://rs.school/' class="footer-text">RSSchool</a>
+            <a href='#' class="footer-text">Chatgrammer &copy; 2025</a>
+            <a href="https://github.com/muhammadamin1308" class="footer-text">GitHub</a>
+    `;
 }

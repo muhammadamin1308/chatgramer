@@ -1,6 +1,4 @@
-import { appBody } from "../components/app/body";
-import { appFooter } from "../components/app/footer";
-import { appHeader } from "../components/app/header";
+import { appHeader, appBody, appFooter } from "../components/app/body";
 
 export function renderAppView() {
     appHeader();
