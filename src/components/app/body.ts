@@ -172,7 +172,7 @@ function userSidebar() {
                 mainChat.innerHTML = "";
 
                 const userName = user.login;
-                const userStatus = document.querySelector("#user-status") as HTMLParagraphElement;
+                // const userStatus = document.querySelector("#user-status") as HTMLParagraphElement;
                 const chatHeader = document.createElement("div") as HTMLDivElement;
                 chatHeader.className = "chat-header";
                 chatHeader.id = "chat-header";
